@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css">
+    <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+    <title>Wash & Dry IoT Project</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+</head>
+<style>
+.btn_container{
+  margin-top: 15px;
+}
+.bulb_btn{
+  font-family: 'Baloo Bhai 2', cursive;
+  width: 150px;
+  height: 50px;
+  border: none;
+  outline: none;
+  cursor: pointer;
+  background: #34dab4;
+  font-size: 30px;
+}
+.btc {
+  background-color: #34dab4;
+  border: none;
+  color: #333;
+  padding: 10px 20px;
+  margin: 5px;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.btc:hover {
+  background-color: #34dab4;
+}
+
+.btc:active {
+  background-color: #34dab4;
+}
+
+.fan {
+    width: 500px;
+    height: 500px;
+    position: relative;
+    z-index: 1;
+}
+
+.fan-main {
+    position: absolute;
+    width: 200px;
+    bottom: 50px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.fan-main .bottom {
+    width: 200px;
+    height: 55px;
+    position: relative;
+    background: black;
+}
+
+.fan-main .bottom::after {
+    content: "";
+    position: absolute;
+    height: 50%;
+    width: 100%;
+    top: 0;
+    left: 0;
+    background: #ccc4;
+}
+
+.fan .head {
+    transition: 1s transform;
+    height: 300px;
+    width: 300px;
+    position: absolute;
+    bottom: 195px;
+    left: calc(50% - 150px);
+}
+
+.fan .head .engine {
+    position: absolute;
+    top: 100px;
+    width: 100px;
+    height: 100px;
+    background: #2f423f;
+    border-radius: 50%;
+    left: 49%;
+    transform: translateX(-50%);
+}
+
+.fan-stand {
+    position: absolute;
+    bottom: 60px;
+    background: #111;
+    height: 270px;
+    width: 15px;
+    left: 50%;
+    z-index: -1;
+    transform: translateX(-50%);
+}
+
+.fan-blades {
+    width: 220px;
+    height: 220px;
+    position: absolute;
+    transition: 4s;
+    top: 13%;
+    left: calc(50% - 115px);
+    transform-origin: center center;
+    z-index: 1;
+}
+
+.fan-blades .blade {
+    position: absolute;
+    width: 40px;
+    height: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    perspective: 500px;
+    transform-style: preserve-3d;
+}
+
+.fan-blades .blade:nth-child(2) {
+    transform: translateX(-50%) rotate(90deg);
+}
+
+.fan-blades .blade:nth-child(3) {
+    transform: translateX(-50%) rotate(180deg);
+}
+
+.fan-blades .blade:nth-child(4) {
+    transform: translateX(-50%) rotate(270deg);
+}
+
+.fan-blades .blade span {
+    width: 100%;
+    height: 200%;
+    border-radius: 44px;
+    background: #222;
+    position: absolute;
+    top: -66px;
+    display: block;
+    transform-style: preserve-3d;
+    transform: rotateX(78deg);
+    overflow: hidden;
+}
+
+.fan-blades .blade span::after {
+    width: 50%;
+    height: 100%;
+    content: "";
+    display: block;
+    background: #333;
+    transform: rotateX(0deg);
+}
+
+.fan-blades .center {
+    position: absolute;
+    overflow: hidden;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%) rotate(45deg);
+    background: #ccc;
+    z-index: 2;
+}
+
+.fan-blades .center::after {
+    content: "";
+    width: 40px;
+    height: 20px;
+    background: #888;
+    display: block;
+}
+
+.fan-blades.start {
+    animation: start infinite 1s linear forwards;
+}
+
+@keyframes start {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes off {
+    to {
+        transform: rotate(0deg);
+    }
+}
+</style>
+<body>
+    <div class="center-content">
+        <h1>Wash & Dry</h1>
+    </div>
+    <div class="container">
+        <div class="column">
+            <div class="label">washer 01</div>
+            <div class="timer" id="washer01">00:00</div>
+            <div>Start: <span id="washer01-start"></span></div>
+            <div>End: <span id="washer01-end"></span></div>
+            <div class="label">&nbsp;</div>
+            <div class="label">washer 02</div>
+            <div class="timer" id="washer02">00:00</div>
+            <div>Start: <span id="washer02-start"></span></div>
+            <div>End: <span id="washer02-end"></span></div>
+        </div>
+        <div class="column">
+            <div class="label">dryer 01</div>
+            <div class="timer" id="dryer01">00:00</div>
+            <div>Start: <span id="dryer01-start"></span></div>
+            <div>End: <span id="dryer01-end"></span></div>
+            <div class="label">&nbsp;</div>
+            <div class="label">dryer 02</div>
+            <div class="timer" id="dryer02">00:00</div>
+            <div>Start: <span id="dryer02-start"></span></div>
+            <div>End: <span id="dryer02-end"></span></div>
+        </div>
+        <div class="column">
+        </div>
+        <div> 
+            <h3>Light</h3>
+            <button id="on" class="btc" onclick="bulb_on()">ON</button>
+            <button id="off" class="btc" onclick="bulb_off()">OFF</button>
+           
+                <div class="btn_container">  
+                    <img src="https://i.postimg.cc/KjK1wL3c/bulb-off.png" id="bulb" width="200"> 
+            </div>
+        </div>
+        <div class="column">
+        </div>
+        <div class="column">
+        <div class="fan">
+            <h3>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Fan</h3>
+            <button id="on" class="btc" onclick="fan_on()">ON</button>
+            <button id="off" class="btc" onclick="fan_off()">OFF</button>
+           
+            <div class="fan-main">
+                <div class="bottom"></div>
+            </div>
+            <div class="fan-stand"></div>
+            <div class="head">
+                <div class="engine">
+                    <span class="center"></span>
+                </div>
+                <div class="fan-blades" id="fanBlades">
+                    <span class="center"></span>
+                    <div class="blade"><span></span></div>
+                    <div class="blade"><span></span></div>
+                    <div class="blade"><span></span></div>
+                    <div class="blade"><span></span></div>
+                </div>
+            </div> 
+        </div>
+       
+    </div>
+</div>
+
+    <script>
+          const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_AUTH_DOMAIN",
+            databaseURL: "https://iot-finalproject-60440-default-rtdb.firebaseio.com",
+            projectId: "iot-finalproject-60440",
+            storageBucket: "YOUR_STORAGE_BUCKET",
+            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+        
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+
+        const database = firebase.database();
+
+        function bulb_on(){
+    document.getElementById('bulb').src='https://i.postimg.cc/6QyTynzr/bulb-on.png';
+    database.ref('Data/').update({
+        lightStatus: 'on'
+    }, function(error) {
+        if (error) {
+            console.error('Failed to update light status:', error);
+        } else {
+            console.log('Light status updated to "on" successfully');
+        }
+    });
+}
+
+function bulb_off(){
+    document.getElementById('bulb').src='https://i.postimg.cc/KjK1wL3c/bulb-off.png';
+    database.ref('Data/').update({
+        lightStatus: 'off'
+    }, function(error) {
+        if (error) {
+            console.error('Failed to update light status:', error);
+        } else {
+            console.log('Light status updated to "off" successfully');
+        }
+    });
+}
+
+function fan_on(){
+    document.getElementById("fanBlades").classList.add("start");
+    database.ref('Data/').update({
+        fanStatus: 'on'
+    }, function(error) {
+        if (error) {
+            console.error('Failed to update light status:', error);
+        } else {
+            console.log('fan status updated to "on" successfully');
+        }
+    });
+}
+
+function fan_off(){
+    document.getElementById("fanBlades").classList.remove("start");
+    database.ref('Data/').update({
+        fanStatus: 'off'
+    }, function(error) {
+        if (error) {
+            console.error('Failed to update light status:', error);
+        } else {
+            console.log('fan status updated to "off" successfully');
+        }
+    });
+}
+        const socket = io();
+        socket.on('connect', () => {
+            console.log('Connected to server');
+        });
+
+        socket.on('disconnect', () => {
+            console.log('Disconnected from server');
+        });
+
+        async function fetchDataAndStartTimers() {
+            try {
+                // const washerResponse = await fetch('https://api.sheety.co/da2a5719d2e86338f90b61791524cc2b/ioTFinalProject/logWasher01');
+                const washerData = await washerResponse.json();
+                console.log('Washer Data:', washerData);
+
+                // const dryerResponse = await fetch('https://api.sheety.co/da2a5719d2e86338f90b61791524cc2b/ioTFinalProject/logDryer01');
+                const dryerData = await dryerResponse.json();
+                console.log('Dryer Data:', dryerData);
+
+                // const washerResponse02 = await fetch('https://api.sheety.co/da2a5719d2e86338f90b61791524cc2b/ioTFinalProject/logWasher02');
+                const washerData02 = await washerResponse02.json();
+                console.log('Washer Data 02:', washerData02);
+
+                // const dryerResponse02 = await fetch('https://api.sheety.co/da2a5719d2e86338f90b61791524cc2b/ioTFinalProject/logDryer02');
+                const dryerData02 = await dryerResponse02.json();
+                console.log('Dryer Data 02:', dryerData02);
+
+        if (!Array.isArray(washerData.logWasher01)) throw new Error('Washer data is not an array');
+        if (!Array.isArray(dryerData.logDryer01)) throw new Error('Dryer data is not an array');
+        if (!Array.isArray(washerData02.logWasher02)) throw new Error('Washer data 02 is not an array');
+        if (!Array.isArray(dryerData02.logDryer02)) throw new Error('Dryer data 02 is not an array');
+
+        // เรียกใช้ startTimer สำหรับแต่ละข้อมูล
+        washerData.logWasher01.forEach(timerData => {
+            const { washerId, timeSpent, timestamp, timeStop } = timerData;
+            startTimer(
+                timeSpent*60,
+                document.getElementById(washerId),
+                document.getElementById(`${washerId}-start`),
+                document.getElementById(`${washerId}-end`),
+                timestamp,
+                timeStop
+            );
+        });
+
+        dryerData.logDryer01.forEach(timerData => {
+            const { dryerId, timeSpent, timestamp, timeStop } = timerData;
+            startTimer(
+                timeSpent*60,
+                document.getElementById(dryerId),
+                document.getElementById(`${dryerId}-start`),
+                document.getElementById(`${dryerId}-end`),
+                timestamp,
+                timeStop
+            );
+        });
+
+        washerData02.logWasher02.forEach(timerData => {
+            const { washerId, timeSpent, timestamp, timeStop } = timerData;
+            startTimer(
+                timeSpent*60,
+                document.getElementById(washerId),
+                document.getElementById(`${washerId}-start`),
+                document.getElementById(`${washerId}-end`),
+                timestamp,
+                timeStop
+            );
+        });
+
+        dryerData02.logDryer02.forEach(timerData => {
+            const { dryerId, timeSpent, timestamp, timeStop } = timerData;
+            startTimer(
+                timeSpent*60,
+                document.getElementById(dryerId),
+                document.getElementById(`${dryerId}-start`),
+                document.getElementById(`${dryerId}-end`),
+                timestamp,
+                timeStop
+            );
+        });
+    } catch (error) {
+        console.error('Error fetching timer data:', error);
+    }
+}
+
+// function startTimer(duration, display, startElement, endElement, startTime, endTime) {
+//     if (duration === 0) {
+//         startElement.textContent = "0000-00-00 00:00:00";
+//         endElement.textContent = "0000-00-00 00:00:00";
+//         display.textContent = "00:00";
+//         return;
+//     }
+
+//     const startDate = new Date(startTime);
+//     const endDate = new Date(endTime);
+//     let timer = duration, minutes, seconds;
+
+//     startElement.textContent = startDate.toLocaleString();
+//     endElement.textContent = endDate.toLocaleString();
+
+//     const intervalId = setInterval(() => {
+//         minutes = parseInt(timer / 60, 10);
+//         seconds = parseInt(timer % 60, 10);
+
+//         minutes = minutes < 10 ? "0" + minutes : minutes;
+//         seconds = seconds < 10 ? "0" + seconds : seconds;
+
+//         display.textContent = minutes + ":" + seconds;
+
+//         if (--timer < 0) {
+//             clearInterval(intervalId);
+//             display.textContent = "00:00";
+//         }
+//     }, 1000);
+// }
+
+// socket.on('washerLogUpdate', (timerData) => {
+//     const { washerId, timeSpent, timestamp, timeStop } = timerData;
+//     startTimer(
+//         timeSpent*60,
+//         document.getElementById(washerId),
+//         document.getElementById(`${washerId}-start`),
+//         document.getElementById(`${washerId}-end`),
+//         timestamp,
+//         timeStop
+//     );
+// });
+
+// socket.on('dryerLogUpdate', (timerData) => {
+//     const { dryerId, timeSpent, timestamp, timeStop } = timerData;
+//     startTimer(
+//         timeSpent*60,
+//         document.getElementById(dryerId),
+//         document.getElementById(`${dryerId}-start`),
+//         document.getElementById(`${dryerId}-end`),
+//         timestamp,
+//         timeStop
+//     );
+// });
+
+// window.onload = fetchDataAndStartTimers;
+function startTimer(duration, display, startElement, endElement) {
+        const now = new Date();
+
+        if (duration === 0) {
+            const formattedDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} --:--:--`;
+            startElement.textContent = formattedDate;
+            endElement.textContent = formattedDate;
+            display.textContent = "00:00";
+            return;
+        }
+
+        const endTime = new Date(now.getTime() + duration * 1000);
+        let timer = Math.floor((endTime.getTime() - now.getTime()) / 1000);
+        let minutes, seconds;
+
+        startElement.textContent = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+        endElement.textContent = `${endTime.getFullYear()}-${String(endTime.getMonth() + 1).padStart(2, '0')}-${String(endTime.getDate()).padStart(2, '0')} ${String(endTime.getHours()).padStart(2, '0')}:${String(endTime.getMinutes()).padStart(2, '0')}:${String(endTime.getSeconds()).padStart(2, '0')}`;
+
+        const intervalId = setInterval(() => {
+            minutes = parseInt(timer / 60, 10);
+            seconds = parseInt(timer % 60, 10);
+
+            minutes = minutes < 10 ? "0" + minutes : minutes;
+            seconds = seconds < 10 ? "0" + seconds : seconds;
+
+            display.textContent = minutes + ":" + seconds;
+
+            if (--timer < 0) {
+                clearInterval(intervalId);
+                display.textContent = "00:00";
+            }
+        }, 1000);
+    }
+
+    socket.on('washerLogUpdate', (timerData) => {
+        const { washerId, timeSpent } = timerData;
+        startTimer(
+            timeSpent * 60,
+            document.getElementById(washerId),
+            document.getElementById(`${washerId}-start`),
+            document.getElementById(`${washerId}-end`)
+        );
+    });
+
+    socket.on('dryerLogUpdate', (timerData) => {
+        const { dryerId, timeSpent } = timerData;
+        startTimer(
+            timeSpent * 60,
+            document.getElementById(dryerId),
+            document.getElementById(`${dryerId}-start`),
+            document.getElementById(`${dryerId}-end`)
+        );
+    });
+
+    window.onload = fetchDataAndStartTimers;
+    
+    window.onload = function() {
+            database.ref('Data/').once('value').then((snapshot) => {
+                const data = snapshot.val();
+                if (data.lightStatus === 'on') {
+                    document.getElementById('bulb').src = 'https://i.postimg.cc/6QyTynzr/bulb-on.png';
+                } else {
+                    document.getElementById('bulb').src = 'https://i.postimg.cc/KjK1wL3c/bulb-off.png';
+                }
+                if (data.fanStatus === 'on') {
+                    document.getElementById("fanBlades").classList.add("start");
+                } else {
+                    document.getElementById("fanBlades").classList.remove("start");
+                }
+            }).catch((error) => {
+                console.error('Failed to retrieve initial states:', error);
+            });
+        };
+    
+// function bulb_on(){
+//       document.getElementById('bulb').src='https://i.postimg.cc/6QyTynzr/bulb-on.png';
+//   }
+//   function bulb_off(){
+//       document.getElementById('bulb').src='https://i.postimg.cc/KjK1wL3c/bulb-off.png';
+//   }
+// function fan_on() {
+//     document.getElementById("fanBlades").classList.add("start");
+// }
+
+// function fan_off() {
+//     document.getElementById("fanBlades").classList.remove("start");
+// }
+    </script>
+   
+</body>
+</html>
