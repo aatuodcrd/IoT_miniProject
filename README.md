@@ -1,5 +1,3 @@
-# IoT_miniProject
-
 # Fan and Light & Washer and Dryer Control with Arduino and ESP8266
 
 This project involves using an Arduino and ESP8266 to control a fan and a light using buttons, and send their status to Firebase. Additionally, it includes another Arduino sketch for controlling a washer and a dryer with countdown timers displayed on 7-segment displays, and sending data to Google Sheets.
